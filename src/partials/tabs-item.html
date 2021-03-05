@@ -30,7 +30,7 @@
 
 <!-- Main navigation item with nested items -->
 {% if nav_item.children %}
-  {% set title = title | d(nav_item.title) %}
+  {% set atitle = atitle | d(nav_item.title) %}
   {% set nav_item = nav_item.children | first %}
 
   <!-- Recurse, if the first item has further nested items -->
@@ -41,7 +41,7 @@
   {% else %}
     <li class="md-tabs__item">
       <a href="{{ nav_item.url | url }}" class="{{ class }}">
-        {{ title }}
+        {{ atitle }}
       </a>
     </li>
   {% endif %}
