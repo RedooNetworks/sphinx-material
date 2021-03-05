@@ -236,7 +236,9 @@
     <div class="md-container" data-md-component="container">
 
       <!-- Hero teaser -->
-      {% block hero %}{% endblock %}
+      {% block hero %}
+      {% include "partials/hero.html" %}
+      {% endblock %}
 
       <!-- Navigation tabs -->
       {% block tabs %}
