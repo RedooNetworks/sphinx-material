@@ -9,7 +9,6 @@
     "eslint-plugin-eslint-comments",
     "eslint-plugin-import",
     "eslint-plugin-jsdoc",
-    "eslint-plugin-no-null"
   ],
   "extends": [
     "eslint:recommended",
@@ -343,9 +342,6 @@
         "checkGetters": false,
         "forceReturnsWithAsync": true
       }
-    ],
-
-    /* Plugin: eslint-plugin-no-null */
-    "no-null/no-null": "error"
+    ]
   }
 }

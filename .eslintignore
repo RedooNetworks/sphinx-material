@@ -28,7 +28,7 @@ __pycache__
 venv
 
 # Build files
-build
+/docs/_build
 MANIFEST
 manifest.json
 site

@@ -53,6 +53,7 @@ import { base, mkdir, write } from "../_"
 interface TransformOptions {
   from: string                         /* Source destination */
   to: string                           /* Target destination */
+  iconPackages: {[key: string]: string}
 }
 
 /* ----------------------------------------------------------------------------
@@ -99,11 +100,14 @@ function digest(file: string, data: string): string {
 export function transformStyle(
   options: TransformOptions
 ): Observable<string> {
+  const iconPattern = new RegExp(
+    `(svg-load\\(")(${  Object.keys(options.iconPackages).join("|")  })/`,
+    "g")
   return defer(() => promisify(sass)({
     file: options.from,
     outFile: options.to,
     includePaths: [
-      "src/assets/stylesheets",
+      "src/static/stylesheets",
       "node_modules/modularscale-sass/stylesheets",
       "node_modules/material-design-color",
       "node_modules/material-shadows"
@@ -112,18 +116,22 @@ export function transformStyle(
     sourceMapContents: true
   }))
     .pipe(
-      switchMap(({ css, map }) => postcss([
-        require("autoprefixer"),
-        require("postcss-inline-svg")({
-          paths: [
-            `${base}/.icons`
-          ],
+      switchMap(({ css, map }) => {
+            css = Buffer.from(css.toString().replace(iconPattern, (_match, prefix, iconPackage) => {
+                return `${prefix}${options.iconPackages[iconPackage]}/`
+            }))
+            return postcss([
+              require("autoprefixer"),
+              require("postcss-inline-svg")({
+            paths: [
+              path.join(path.dirname(path.resolve(base)), "node_modules")
+            ],
           encode: false
         }),
-        ...process.argv.includes("--optimize")
-          ? [require("cssnano")]
-          : []
-      ])
+              ...process.argv.includes("--optimize")
+                ? [require("cssnano")]
+                : []
+            ])
         .process(css, {
           from: options.from,
           map: {
@@ -131,6 +139,7 @@ export function transformStyle(
             inline: false
           }
         })
+        }
       ),
       catchError(err => {
         console.log(err.formatted || err.message)

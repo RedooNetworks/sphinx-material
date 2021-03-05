@@ -25,10 +25,10 @@ import * as fs from "fs/promises"
 import {
   EMPTY,
   Observable,
+  defer,
   from,
   fromEvent,
   identity,
-  defer,
   of
 } from "rxjs"
 import {
@@ -66,7 +66,7 @@ interface WatchOptions {
 /**
  * Base directory for compiled files
  */
-export const base = "material"
+export const base = "sphinx_material"
 
 /**
  * Cache to omit redundant writes
@@ -158,7 +158,6 @@ export function read(file: string): Observable<string> {
   return defer(() => fs.readFile(file, "utf8"))
 }
 
-
 /**
  * Write a file, but only if the contents changed
  *
@@ -168,7 +167,7 @@ export function read(file: string): Observable<string> {
  * @returns File observable
  */
 export function write(file: string, data: string): Observable<string> {
-  let contents = cache.get(file)
+  const contents = cache.get(file)
   if (contents === data) {
     return of(file)
   } else {
@@ -177,6 +176,7 @@ export function write(file: string, data: string): Observable<string> {
       .pipe(
         mapTo(file),
         process.argv.includes("--verbose")
+          // eslint-disable-next-line no-console,@typescript-eslint/no-shadow
           ? tap(file => console.log(`${now()} + ${file}`))
           : identity
       )

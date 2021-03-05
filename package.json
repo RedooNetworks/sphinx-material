@@ -1,35 +1,39 @@
 {
-  "name": "mkdocs-material",
-  "version": "7.0.5",
-  "description": "A Material Design theme for MkDocs",
+  "name": "sphinx-material",
+  "version": "0.0.0",
+  "description": "Sphinx Material design theme",
   "keywords": [
-    "mkdocs",
+    "sphinx",
     "documentation",
     "theme"
   ],
-  "homepage": "https://squidfunk.github.io/mkdocs-material/",
+  "homepage": "https://bashtage.github.io/sphinx-material/",
   "bugs": {
-    "url": "https://github.com/squidfunk/mkdocs-material/issues",
-    "email": "martin.donath@squidfunk.com"
+    "url": "https://github.com/bashtage/sphinx-material/issues",
+    "email": "kevin.k.sheppard@gmail.com"
   },
   "license": "MIT",
   "private": true,
   "author": {
-    "name": "Martin Donath",
-    "email": "martin.donath@squidfunk.com"
+    "name": "Kevin Sheppard",
+    "email": "kevin.k.sheppard@gmail.com"
   },
   "contributors": [],
   "repository": {
     "type": "git",
-    "url": "https://github.com/squidfunk/mkdocs-material.git"
+    "url": "https://github.com/bashtage/sphinx-material.git"
   },
   "scripts": {
-    "build": "rimraf material && ts-node -T tools/build --optimize",
+    "build": "npm run clean && ts-node -T tools/build --optimize",
+    "build:dev": "npm run clean && ts-node -T tools/build",
     "build:dirty": "ts-node -T tools/build --dirty",
-    "clean": "rimraf material",
+    "build:noclean": "ts-node -T tools/build --verbose",
+    "docs": "npm run build && cd docs && sphinx-build . _build -a",
+    "docs:dev": "npm run build:dev && cd docs && sphinx-build . _build -a",
+    "clean": "rimraf sphinx_material/{*.html,partials,.icons,static}",
     "lint": "npm run lint:scss && npm run lint:ts",
     "lint:scss": "stylelint \"src/assets/**/*.scss\"",
-    "lint:ts": "eslint --cache \"src/**/*.ts\"",
+    "lint:ts": "eslint --cache \"{src,tools}/**/*.ts\"",
     "start": "ts-node -T tools/build --verbose --dirty --watch"
   },
   "dependencies": {

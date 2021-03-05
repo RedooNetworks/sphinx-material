@@ -22,11 +22,9 @@
 
 import { minify as minhtml } from "html-minifier"
 import * as path from "path"
-import { concat, defer, EMPTY, merge, of, zip } from "rxjs"
+import { EMPTY, concat, defer, from, merge, of, zip } from "rxjs"
 import {
   concatMap,
-  map,
-  reduce,
   scan,
   startWith,
   switchMap,
@@ -38,25 +36,12 @@ import {
   optimize
 } from "svgo"
 
-import { IconSearchIndex } from "_/components"
-
-import { base, read, resolve, watch, write } from "./_"
+import { base, resolve, watch } from "./_"
 import { copyAll } from "./copy"
 import {
   transformScript,
   transformStyle
 } from "./transform"
-
-/* ----------------------------------------------------------------------------
- * Helper types
- * ------------------------------------------------------------------------- */
-
-/**
- * Twemoji icon
- */
-interface TwemojiIcon {
-  unicode: string                      /* Unicode code point */
-}
 
 /* ----------------------------------------------------------------------------
  * Helper functions
@@ -102,7 +87,7 @@ function minsvg(data: string): string {
 const assets$ = concat(
 
   /* Copy Material Design icons */
-  ...["*.svg", "../LICENSE"]
+  ...["../LICENSE"]
     .map(pattern => copyAll(pattern, {
       from: "node_modules/@mdi/svg/svg",
       to: `${base}/.icons/material`,
@@ -110,7 +95,7 @@ const assets$ = concat(
     })),
 
   /* Copy GitHub octicons */
-  ...["*.svg", "../../LICENSE"]
+  ...["../../LICENSE"]
     .map(pattern => copyAll(pattern, {
       from: "node_modules/@primer/octicons/build/svg",
       to: `${base}/.icons/octicons`,
@@ -118,50 +103,44 @@ const assets$ = concat(
     })),
 
   /* Copy FontAwesome icons */
-  ...["**/*.svg", "../LICENSE.txt"]
+  ...["../LICENSE.txt"]
     .map(pattern => copyAll(pattern, {
       from: "node_modules/@fortawesome/fontawesome-free/svgs",
       to: `${base}/.icons/fontawesome`,
       transform: async data => minsvg(data)
     })),
-
-  /* Copy Lunr.js search stemmers and segmenter */
-  ...["min/*.js", "tinyseg.js"]
-    .map(pattern => copyAll(pattern, {
-      from: "node_modules/lunr-languages",
-      to: `${base}/assets/javascripts/lunr`
-    })),
-
-  /* Copy images and configurations */
-  ...[".icons/*.svg", "assets/images/*", "**/*.{py,yml}"]
-    .map(pattern => copyAll(pattern, {
-      from: "src",
-      to: base
-    }))
 )
 
 /* ------------------------------------------------------------------------- */
 
+const iconPackages: {[key: string]: string} = {
+  material: "@mdi/svg/svg",
+  fontawesome: "@fortawesome/fontawesome-free/svgs",
+  octicons: "@primer/octicons/build/svg"
+}
+
 /* Transform styles */
-const stylesheets$ = resolve("**/[!_]*.scss", { cwd: "src" })
+const stylesheets$ = resolve("**/[!_]*.scss", { cwd: "src/assets" })
   .pipe(
     concatMap(file => zip(
       of(ext(file, ".css")),
       transformStyle({
-        from: `src/${file}`,
-        to: ext(`${base}/${file}`, ".css")
+        from: `src/assets/${file}`,
+        to: ext(`${base}/static/${file}`, ".css"),
+        iconPackages
       }))
     )
   )
 
 /* Transform scripts */
-const javascripts$ = resolve("**/{bundle,search}.ts", { cwd: "src" })
+const javascripts$ = resolve("**/bundle.ts", { cwd: "src/assets" })
   .pipe(
     concatMap(file => zip(
       of(ext(file, ".js")),
       transformScript({
-        from: `src/${file}`,
-        to: ext(`${base}/${file}`, ".js")
+        from: `src/assets/${file}`,
+        to: ext(`${base}/static/${file}`, ".js"),
+        iconPackages
       }))
     )
   )
@@ -191,6 +170,12 @@ const manifest$ = merge(
     ), new Map<string, string>()),
   )
 
+// Icons referenced by .html templates that need to be copied.
+const iconsRequired: {from: string, to: string}[] = []
+
+const iconPattern = new RegExp(
+  `"\\.icons/(${Object.keys(iconPackages).join("|")})/([/A-Za-z\\-_0-9]+\\.svg)"`, "g")
+
 /* Transform templates */
 const templates$ = manifest$
   .pipe(
@@ -212,6 +197,13 @@ const templates$ = manifest$
               new RegExp(`('|")${key}\\1`, "g"),
               `$1${value}$1`
             )
+
+        // Find all icon references
+        for (const m of data.matchAll(iconPattern)) {
+          const [, iconPackage, iconPath] = m
+          iconsRequired.push({from: path.join("node_modules", iconPackages[iconPackage], iconPath),
+                                to: path.join(".icons", iconPackage, iconPath)})
+        }
 
         /* Normalize line feeds and minify HTML */
         const html = data.replace(/\r\n/gm, "\n")
@@ -235,52 +227,14 @@ const templates$ = manifest$
     }))
   )
 
-/* ------------------------------------------------------------------------- */
+const copyIcons$ = defer(() => from(iconsRequired))
+    .pipe(concatMap(({to, from: fromPath}) => copyAll(path.basename(to), {
+        from: path.dirname(fromPath),
+        to: `${base}/${path.dirname(to)}`,
+        transform: async data => minsvg(data)
+    })))
 
-/* Compute icon mappings */
-const icons$ = defer(() => resolve("**/*.svg", { cwd: "material/.icons" }))
-  .pipe(
-    reduce((index, file) => index.set(
-      file.replace(/\.svg$/, "").replace(/\//g, "-"),
-      file
-    ), new Map<string, string>())
-  )
-
-/* Compute emoji mappings (based on Twemoji) */
-const emojis$ = defer(() => resolve("venv/**/twemoji_db.py"))
-  .pipe(
-    switchMap(file => read(file)),
-    map(data => {
-      const [, payload] = data.match(/^emoji = ({.*})$.alias/ms)!
-      return Object.entries<TwemojiIcon>(JSON.parse(payload))
-        .reduce((index, [name, { unicode }]) => index.set(
-          name.replace(/(^:|:$)/g, ""),
-          `${unicode}.svg`
-        ), new Map<string, string>())
-    })
-  )
-
-/* Build search index for icons and emojis */
-const index$ = zip(icons$, emojis$)
-  .pipe(
-    map(([icons, emojis]) => {
-      const cdn = "https://raw.githubusercontent.com"
-      return {
-        icons: {
-          base: `${cdn}/squidfunk/mkdocs-material/master/material/.icons/`,
-          data: Object.fromEntries(icons)
-        },
-        emojis: {
-          base: `${cdn}/twitter/twemoji/master/assets/svg/`,
-          data: Object.fromEntries(emojis)
-        }
-      } as IconSearchIndex
-    }),
-    switchMap(data => write(
-      `${base}/overrides/assets/javascripts/iconsearch_index.json`,
-      JSON.stringify(data)
-    ))
-  )
+const templatesWithIcons$ = concat(templates$, copyIcons$)
 
 /* ----------------------------------------------------------------------------
  * Program
@@ -289,8 +243,8 @@ const index$ = zip(icons$, emojis$)
 /* Assemble pipeline */
 const build$ =
   process.argv.includes("--dirty")
-    ? templates$
-    : concat(assets$, merge(templates$, index$))
+    ? templatesWithIcons$
+    : concat(assets$, templatesWithIcons$)
 
 /* Let's get rolling */
 build$.subscribe()
