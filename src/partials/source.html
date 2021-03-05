@@ -30,8 +30,17 @@
   data-md-component="source"
 >
   <div class="md-source__icon md-icon">
-    {% set icon = config.theme.icon.repo or "fontawesome/brands/git-alt" %}
-    {% include ".icons/" ~ icon ~ ".svg" %}
+    <!-- Hard code icon paths so that they are found by build script -->
+    {% if theme_repo_type == "github" %}
+      {% set icon = ".icons/fontawesome/brands/github.svg" %}
+    {% elif theme_repo_type == "gitlab" %}
+      {% set icon = ".icons/fontawesome/brands/gitlab.svg" %}
+    {% elif theme_repo_type == "bitbucket" %}
+      {% set icon = ".icons/fontawesome/brands/bitbucket.svg" %}
+    {% else %}
+      {% set icon = ".icons/fontawesome/brands/git-alt.svg" %}
+    {% endif %}
+    {% include icon %}
   </div>
   <div class="md-source__repository">
     {{ config.repo_name }}
