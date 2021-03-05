@@ -9,7 +9,6 @@
       "dom",
       "es2017",
       "esnext",
-      "webworker"
     ],
     "module": "commonjs",
     "moduleResolution": "node",

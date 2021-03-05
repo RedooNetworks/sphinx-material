@@ -20,10 +20,9 @@
  * IN THE SOFTWARE.
  */
 
-import { NEVER, Observable, ObservableInput, merge } from "rxjs"
-import { filter, sample, take } from "rxjs/operators"
+import { NEVER, Observable, merge } from "rxjs"
+import { filter } from "rxjs/operators"
 
-import { configuration } from "~/_"
 import {
   Keyboard,
   getActiveElement,
@@ -32,12 +31,6 @@ import {
   setElementSelection,
   setToggle
 } from "~/browser"
-import {
-  SearchIndex,
-  isSearchQueryMessage,
-  isSearchReadyMessage,
-  setupSearchWorker
-} from "~/integrations"
 
 import { Component, getComponentElement } from "../../_"
 import { SearchQuery, mountSearchQuery } from "../query"
@@ -62,7 +55,6 @@ export type Search =
  * Mount options
  */
 interface MountOptions {
-  index$: ObservableInput<SearchIndex> /* Search index observable */
   keyboard$: Observable<Keyboard>      /* Keyboard observable */
 }
 
@@ -82,24 +74,12 @@ interface MountOptions {
  * @returns Search component observable
  */
 export function mountSearch(
-  el: HTMLElement, { index$, keyboard$ }: MountOptions
+  el: HTMLElement, { keyboard$ }: MountOptions
 ): Observable<Component<Search>> {
-  const config = configuration()
-  const worker = setupSearchWorker(config.search, index$)
 
   /* Retrieve nested components */
   const query  = getComponentElement("search-query", el)
   const result = getComponentElement("search-result", el)
-
-  /* Re-emit query when search is ready */
-  const { tx$, rx$ } = worker
-  tx$
-    .pipe(
-      filter(isSearchQueryMessage),
-      sample(rx$.pipe(filter(isSearchReadyMessage))),
-      take(1)
-    )
-      .subscribe(tx$.next.bind(tx$))
 
   /* Set up search keyboard handlers */
   keyboard$
@@ -172,9 +152,9 @@ export function mountSearch(
       })
 
   /* Create and return component */
-  const query$ = mountSearchQuery(query, worker)
+  const query$ = mountSearchQuery(query)
   return merge(
     query$,
-    mountSearchResult(result, worker, { query$ })
+    mountSearchResult(result, { query$ })
   )
 }

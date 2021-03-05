@@ -22,22 +22,14 @@
 
 import {
   Observable,
-  Subject,
   animationFrameScheduler,
-  merge,
+  interval,
   of
 } from "rxjs"
 import {
-  bufferCount,
-  filter,
-  finalize,
-  map,
-  observeOn,
-  startWith,
-  switchMap,
-  tap,
-  withLatestFrom,
-  zipWith
+  concatMap,
+  debounce,
+  distinctUntilKeyChanged, observeOn
 } from "rxjs/operators"
 
 import {
@@ -47,14 +39,12 @@ import {
   setSearchResultMeta
 } from "~/actions"
 import {
-  getElementOrThrow,
-  watchElementThreshold
+  getElementOrThrow
 } from "~/browser"
 import {
-  SearchResult as SearchResultData,
-  SearchWorker,
-  isSearchResultMessage
+  SearchResult as SearchResultData
 } from "~/integrations"
+import { SearchResultStream, getResults } from "~/sphinx_search"
 import { renderSearchResult } from "~/templates"
 
 import { Component } from "../../_"
@@ -93,67 +83,77 @@ interface MountOptions {
  * the vertical offset of the search result container.
  *
  * @param el - Search result list element
- * @param worker - Search worker
  * @param options - Options
  *
  * @returns Search result list component observable
  */
 export function mountSearchResult(
-  el: HTMLElement, { rx$ }: SearchWorker, { query$ }: MountOptions
+  el: HTMLElement, { query$ }: MountOptions
 ): Observable<Component<SearchResult>> {
-  const internal$ = new Subject<SearchResult>()
-  const boundary$ = watchElementThreshold(el.parentElement!)
-    .pipe(
-      filter(Boolean)
-    )
-
   /* Update search result metadata */
   const meta = getElementOrThrow(":scope > :first-child", el)
-  internal$
-    .pipe(
-      observeOn(animationFrameScheduler),
-      withLatestFrom(query$)
-    )
-      .subscribe(([{ data }, { value }]) => {
-        if (value)
-          setSearchResultMeta(meta, data.length)
-        else
-          resetSearchResultMeta(meta)
-      })
 
   /* Update search result list */
   const list = getElementOrThrow(":scope > :last-child", el)
-  internal$
-    .pipe(
-      observeOn(animationFrameScheduler),
-      tap(() => resetSearchResultList(list)),
-      switchMap(({ data }) => merge(
-        of(...data.slice(0, 10)),
-        of(...data.slice(10))
-          .pipe(
-            bufferCount(4),
-            zipWith(boundary$),
-            switchMap(([chunk]) => of(...chunk))
-          )
-      ))
-    )
-      .subscribe(result => {
-        addToSearchResultList(list, renderSearchResult(result))
+
+  let lastResults: SearchResultStream|undefined
+  let blocked: (() => void)|undefined
+
+  const scrollContainer = el.parentElement!
+  const threshold = 16
+  const atScrollLimit = () =>
+      scrollContainer.scrollTop + scrollContainer.clientHeight + threshold >
+    scrollContainer.scrollHeight
+  const checkScrollLimit = () => {
+    if (blocked === undefined) return
+    if (atScrollLimit()) {
+      blocked()
+      blocked = undefined
+    }
+  }
+  scrollContainer.addEventListener("scroll", checkScrollLimit, {passive: true})
+  window.addEventListener("resize", checkScrollLimit, {passive: true})
+  const startAddingResults = async (results: SearchResultStream) => {
+    lastResults = results
+    const blockSize = 4
+    let limit = blockSize
+    for (let i = 0; i < results.count; ++i) {
+      if (i === limit) {
+        if (!atScrollLimit()) {
+          await new Promise(resolve => {
+            blocked = resolve
+          })
+        }
+        limit += blockSize
+      }
+      if (lastResults !== results) {
+        // Cancelled.
+        return
+      }
+      const result = await results.get(i)
+      if (lastResults !== results) {
+        // Cancelled.
+        return
+      }
+      addToSearchResultList(list, renderSearchResult(result))
+    }
+  }
+  query$
+      .pipe(
+        distinctUntilKeyChanged("value"), debounce(() => interval(250)),
+        concatMap(async query => {
+            if (!query.value) return undefined
+            return getResults(query.value)
+          }),
+        observeOn(animationFrameScheduler))
+      .subscribe(results => {
+        resetSearchResultList(list)
+        if (results) {
+          setSearchResultMeta(meta, results.count)
+          void startAddingResults(results)
+        } else {
+          resetSearchResultMeta(meta)
+        }
       })
-
-  /* Filter search result list */
-  const result$ = rx$
-    .pipe(
-      filter(isSearchResultMessage),
-      map(({ data }) => ({ data })),
-      startWith({ data: [] })
-    )
-
-  /* Create and return component */
-  return result$
-    .pipe(
-      tap(internal$),
-      finalize(() => internal$.complete()),
-      map(state => ({ ref: el, ...state }))
-    )
+  return of()
 }

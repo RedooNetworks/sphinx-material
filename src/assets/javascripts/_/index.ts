@@ -81,7 +81,6 @@ export interface Config {
   base: string                         /* Base URL */
   features: Flag[]                     /* Feature flags */
   translations: Translations           /* Translations */
-  search: string                       /* Search worker URL */
   version?: Versioning                 /* Versioning */
 }
 

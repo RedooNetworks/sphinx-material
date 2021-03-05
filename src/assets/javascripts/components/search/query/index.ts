@@ -47,12 +47,6 @@ import {
   setToggle,
   watchElementFocus
 } from "~/browser"
-import {
-  SearchMessageType,
-  SearchQueryMessage,
-  SearchWorker,
-  defaultTransform
-} from "~/integrations"
 
 import { Component } from "../../_"
 
@@ -85,8 +79,6 @@ export interface SearchQuery {
 export function watchSearchQuery(
   el: HTMLInputElement
 ): Observable<SearchQuery> {
-  const fn = __search?.transform || defaultTransform
-
   /* Intercept focus and input events */
   const focus$ = watchElementFocus(el)
   const value$ = merge(
@@ -94,7 +86,7 @@ export function watchSearchQuery(
     fromEvent(el, "focus").pipe(delay(1))
   )
     .pipe(
-      map(() => fn(el.value)),
+      map(() => el.value.trim()),
       distinctUntilChanged()
     )
 
@@ -109,25 +101,13 @@ export function watchSearchQuery(
  * Mount search query
  *
  * @param el - Search query element
- * @param worker - Search worker
  *
  * @returns Search query component observable
  */
 export function mountSearchQuery(
-  el: HTMLInputElement, { tx$ }: SearchWorker
+  el: HTMLInputElement,
 ): Observable<Component<SearchQuery, HTMLInputElement>> {
   const internal$ = new Subject<SearchQuery>()
-
-  /* Handle value changes */
-  internal$
-    .pipe(
-      distinctUntilKeyChanged("value"),
-      map(({ value }): SearchQueryMessage => ({
-        type: SearchMessageType.QUERY,
-        data: value
-      }))
-    )
-      .subscribe(tx$.next.bind(tx$))
 
   /* Handle focus changes */
   internal$

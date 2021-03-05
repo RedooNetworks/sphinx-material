@@ -31,11 +31,10 @@ import {
   switchMap
 } from "rxjs/operators"
 
-import { configuration, feature } from "./_"
+import { feature } from "./_"
 import {
   at,
   getElement,
-  requestJSON,
   setToggle,
   watchDocument,
   watchKeyboard,
@@ -61,7 +60,6 @@ import {
   watchMain
 } from "./components"
 import {
-  SearchIndex,
   setupClipboardJS,
   setupInstantLoading,
   setupVersionSelector
@@ -91,14 +89,6 @@ const viewport$ = watchViewport()
 const tablet$   = watchMedia("(min-width: 960px)")
 const screen$   = watchMedia("(min-width: 1220px)")
 const print$    = watchPrint()
-
-/* Retrieve search index, if search is enabled */
-const config = configuration()
-const index$ = document.forms.namedItem("search")
-  ? __search?.index || requestJSON<SearchIndex>(
-    `${config.base}/search/search_index.json`
-  )
-  : NEVER
 
 /* Set up Clipboard.js integration */
 const alert$ = new Subject<string>()
@@ -175,7 +165,7 @@ const control$ = merge(
 
   /* Search */
   ...getComponentElements("search")
-    .map(el => mountSearch(el, { index$, keyboard$ })),
+    .map(el => mountSearch(el, { keyboard$ })),
 
   /* Repository information */
   ...getComponentElements("source")

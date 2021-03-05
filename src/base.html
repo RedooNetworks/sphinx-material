@@ -293,7 +293,8 @@
 
           <!-- Article -->
           <div class="md-content" data-md-component="content">
-            <article class="md-content__inner md-typeset">
+            <!-- Include role="main" for sphinx search -->
+            <article class="md-content__inner md-typeset" role="main">
 
               <!-- Content -->
               {% block content %}
@@ -357,7 +358,6 @@
         "base": base_url,
         "features": features,
         "translations": {},
-        "search": "assets/javascripts/workers/search.js" | url,
         "version": config.extra.version or None
       } -%}
 

@@ -25,7 +25,6 @@ import { Observable, Subject } from "rxjs"
 import { Keyboard, Viewport } from "~/browser"
 import { Component } from "~/components"
 import {
-  SearchIndex,
   SearchTransformFn
 } from "~/integrations"
 
@@ -38,7 +37,6 @@ import {
  */
 export interface GlobalSearchConfig {
   transform?: SearchTransformFn        /* Transformation function */
-  index?: Promise<SearchIndex>         /* Alternate index */
 }
 
 /* ------------------------------------------------------------------------- */
