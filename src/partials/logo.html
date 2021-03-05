@@ -21,9 +21,8 @@
 -->
 
 <!-- Logo -->
-{% if config.theme.logo %}
-  <img src="{{ config.theme.logo | url }}" alt="logo" />
-{% else %}
-  {% set icon = config.theme.icon.logo or "material/library" %}
-  {% include ".icons/" ~ icon ~ ".svg" %}
-{% endif %}
+{%- if logo -%}
+  <img src="{{ pathto('_static/' ~ logo, 1) }}" alt="logo" />
+{%- elif theme_logo_svg -%}
+  {%- include theme_logo_svg -%}
+{%- endif -%}

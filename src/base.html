@@ -20,74 +20,20 @@
   IN THE SOFTWARE.
 -->
 
+{%- extends "basic/layout.html" %}
 {% import "partials/language.html" as lang with context %}
 
-<!doctype html>
-<html lang="{{ lang.t('language') }}" class="no-js">
-  <head>
-
-    <!-- Metatags -->
-    {% block site_meta %}
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width,initial-scale=1" />
-
-      <!-- Page description -->
-      {% if page and page.meta and page.meta.description %}
-        <meta name="description" content="{{ page.meta.description }}" />
-      {% elif config.site_description %}
-        <meta name="description" content="{{ config.site_description }}" />
-      {% endif %}
-
-      <!-- Page keywords -->
-      {% if page and page.meta and page.meta.keywords %}
-        <meta name="keywords" content="{{ page.meta.keywords }}" />
-      {% elif config.site_keywords %}
-        <meta name="keywords" content="{{ config.site_keywords }}" />
-      {% endif %}
-
-      <!-- Page author -->
-      {% if page and page.meta and page.meta.author %}
-        <meta name="author" content="{{ page.meta.author }}" />
-      {% elif config.site_author %}
-        <meta name="author" content="{{ config.site_author }}" />
-      {% endif %}
-
-      <!-- Canonical -->
-      {% if page.canonical_url %}
-        <link rel="canonical" href="{{ page.canonical_url }}" />
-      {% endif %}
-
-      <!-- Favicon -->
-      <link rel="icon" href="{{ config.theme.favicon | url }}" />
-
-      <!-- Generator banner -->
-      <meta
-        name="generator"
-        content="mkdocs-{{ mkdocs_version }}, $md-name$-$md-version$"
-      />
-    {% endblock %}
-
-    <!-- Site title -->
-    {% block htmltitle %}
-      {% if page and page.meta and page.meta.title %}
-        <title>{{ page.meta.title }} - {{ config.site_name }}</title>
-      {% elif page and page.title and not page.is_homepage %}
-        <title>{{ page.title | striptags }} - {{ config.site_name }}</title>
-      {% else %}
-        <title>{{ config.site_name }}</title>
-      {% endif %}
-    {% endblock %}
-
+{%- block css %}
     <!-- Theme-related stylesheets -->
     {% block styles %}
-      <link rel="stylesheet" href="{{ 'assets/stylesheets/main.css' | url }}" />
+      <link rel="stylesheet" href="{{ pathto('_static/stylesheets/main.css', resource=True) }}" />
 
       <!-- Extra color palette -->
       {% if config.theme.palette %}
         {% set palette = config.theme.palette %}
         <link
           rel="stylesheet"
-          href="{{ 'assets/stylesheets/palette.css' | url }}"
+          href="{{ pathto('_static/stylesheets/palette.css', resource=True) }}"
         />
 
         <!-- Theme-color meta tag for Android -->
@@ -100,9 +46,6 @@
         {% endif %}
       {% endif %}
     {% endblock %}
-
-    <!-- JavaScript libraries -->
-    {% block libs %}{% endblock %}
 
     <!-- Webfonts -->
     {% block fonts %}
@@ -136,11 +79,6 @@
       />
     {% endif %}
 
-    <!-- Custom stylesheets -->
-    {% for path in config["extra_css"] %}
-      <link rel="stylesheet" href="{{ path | url }}" />
-    {% endfor %}
-
     <!-- Analytics -->
     {% block analytics %}
       {% if config.google_analytics %}
@@ -148,10 +86,25 @@
       {% endif %}
     {% endblock %}
 
-    <!-- Custom front matter -->
-    {% block extrahead %}{% endblock %}
-  </head>
+   <!-- Override default css block to exclude pygments.css, since this theme
+   provides its own pygments styles -->
+    {%- for css in css_files %}
+      {%- if css|attr("filename") %}
+    {{ css_tag(css) }}
+      {%- else %}
+    <link rel="stylesheet" href="{{ pathto(css, 1)|e }}" type="text/css" />
+      {%- endif %}
+    {%- endfor %}
+{%- endblock %}
 
+{%- block extrahead %}
+  {% if theme_touch_icon %}
+    <link rel="apple-touch-icon" href="{{ pathto('_static/' ~ theme_touch_icon, 1) }}"/>
+  {% endif %}
+  {{ super() }}
+{% endblock %}
+
+{%- block body_tag %}
   <!-- Text direction and color palette, if defined -->
   {% set direction = config.theme.direction or lang.t('direction') %}
   {% if config.theme.palette %}
@@ -180,10 +133,12 @@
   {% else %}
     <body dir="{{ direction }}">
   {% endif %}
+{%- endblock %}
 
     <!-- Retrieve features from configuration -->
     {% set features = config.theme.features or [] %}
 
+{%- block header %}
     <!--
       State toggles - we need to set autocomplete="off" in order to reset the
       drawer on back button invocation in some browsers
@@ -208,12 +163,9 @@
 
     <!-- Skip to content -->
     <div data-md-component="skip">
-      {% if page.toc | first is defined %}
-        {% set skip = page.toc | first %}
-        <a href="{{ skip.url | url }}" class="md-skip">
+        <a href="#{{ pagename }}" class="md-skip">
           {{ lang.t('skip.link.title') }}
         </a>
-      {% endif %}
     </div>
 
     <!-- Announcement bar -->
@@ -228,10 +180,13 @@
     </div>
 
     <!-- Header -->
-    {% block header %}
       {% include "partials/header.html" %}
-    {% endblock %}
+{% endblock %}
 
+{%- block relbar1 %}{% endblock %}
+{%- block relbar2 %}{% endblock %}
+
+{%- block content %}
     <!-- Container -->
     <div class="md-container" data-md-component="container">
 
@@ -297,7 +252,6 @@
             <article class="md-content__inner md-typeset" role="main">
 
               <!-- Content -->
-              {% block content %}
 
                 <!-- Edit button -->
                 {% if page.edit_url %}
@@ -310,17 +264,7 @@
                   </a>
                 {% endif %}
 
-                <!--
-                  Hack: check whether the content contains a h1 headline. If it
-                  doesn't, the page title (or respectively site name) is used
-                  as the main headline.
-                -->
-                {% if not "\x3ch1" in page.content %}
-                  <h1>{{ page.title | d(config.site_name, true)}}</h1>
-                {% endif %}
-
-                <!-- Markdown content -->
-                {{ page.content }}
+                {% block body %} {% endblock %}
 
                 <!-- Last update of source file -->
                 {% if page and page.meta %}
@@ -330,7 +274,6 @@
                     {% include "partials/source-date.html" %}
                   {% endif %}
                 {% endif %}
-              {% endblock %}
 
               <!-- Disqus integration -->
               {% block disqus %}
@@ -340,17 +283,17 @@
           </div>
         </div>
       </main>
+    </div>
+{%- endblock %}
 
       <!-- Footer -->
       {% block footer %}
         {% include "partials/footer.html" %}
-      {% endblock %}
-    </div>
-
     <!-- Dialog -->
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
+        {%- block footer_scripts %}
 
     <!-- Theme-related configuration -->
     {% block config %}
@@ -387,14 +330,6 @@
       </script>
     {% endblock %}
 
-    <!-- Theme-related JavaScript -->
-    {% block scripts %}
-      <script src="{{ 'assets/javascripts/bundle.js' | url }}"></script>
-
-      <!-- Custom JavaScript -->
-      {% for path in config["extra_javascript"] %}
-        <script src="{{ path | url }}"></script>
-      {% endfor %}
-    {% endblock %}
-  </body>
-</html>
+    <script src="{{ pathto('_static/javascripts/bundle.js', 1) }}"></script>
+  {%- endblock %}
+{% endblock %}

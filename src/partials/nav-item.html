@@ -65,7 +65,7 @@
 
       <!-- Expand active pages -->
       <label class="md-nav__link" for="{{ path }}">
-        {{ nav_item.title }}
+        <a href="{{ nav_item.url|e }}">{{ nav_item.title }}</a>
         <span class="md-nav__icon md-icon"></span>
       </label>
       <nav
@@ -88,7 +88,7 @@
     </li>
 
   <!-- Currently active page -->
-  {% elif nav_item == page %}
+  {% elif nav_item.active %}
     <li class="{{ class }}">
       {% set toc = page.toc %}
 
@@ -99,11 +99,6 @@
         type="checkbox"
         id="__toc"
       />
-
-      <!-- Hack: see partials/toc.html for more information -->
-      {% if toc | first is defined and "\x3ch1 id=" in page.content %}
-        {% set toc = (toc | first).children %}
-      {% endif %}
 
       <!-- Render table of contents, if not empty -->
       {% if toc | first is defined %}
