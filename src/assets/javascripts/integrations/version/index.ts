@@ -20,6 +20,8 @@
  * IN THE SOFTWARE.
  */
 
+import { Observable, of } from "rxjs"
+
 import { configuration } from "~/_"
 import { getElementOrThrow, requestJSON } from "~/browser"
 import { Version, renderVersionSelector } from "~/templates"
@@ -33,7 +35,12 @@ import { Version, renderVersionSelector } from "~/templates"
  */
 export function setupVersionSelector(): void {
   const config = configuration()
-  requestJSON<Version[]>(new URL("versions.json", config.base))
+  const versionObservable: Observable<Version[]> =
+      config.version!.staticVersions ?
+        of(config.version!.staticVersions) :
+        requestJSON<Version[]>(new URL(
+          config.version!.versionPath ?? "versions.json", config.base))
+  versionObservable
     .subscribe(versions => {
       const topic = getElementOrThrow(".md-header__topic")
       topic.appendChild(renderVersionSelector(versions))

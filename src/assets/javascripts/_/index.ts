@@ -21,6 +21,7 @@
  */
 
 import { getElementOrThrow, getLocation } from "~/browser"
+import { Version } from "~/templates/version"
 
 /* ----------------------------------------------------------------------------
  * Types
@@ -69,6 +70,8 @@ export type Translations = Record<Translation, string>
  */
 export interface Versioning {
   provider: "mike"                     /* Version provider */
+  staticVersions?: Version[]          /* Static version list to use */
+  versionPath?: string                /* Base-relative path to versions.json */
 }
 
 /**
