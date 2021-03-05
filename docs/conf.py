@@ -89,6 +89,7 @@ html_theme = "sphinx_material"
 
 # material theme options (see theme.conf for more information)
 html_theme_options = {
+    "logo_svg": "material-design-build-icon.svg",
     "base_url": "http://bashtage.github.io/sphinx-material/",
     "repo_url": "https://github.com/bashtage/sphinx-material/",
     "repo_name": "Material for Sphinx",
@@ -96,7 +97,6 @@ html_theme_options = {
     "html_minify": False,
     "html_prettify": True,
     "css_minify": True,
-    "logo_icon": "&#xe869",
     "repo_type": "github",
     "globaltoc_depth": 2,
     "color_primary": "blue",
