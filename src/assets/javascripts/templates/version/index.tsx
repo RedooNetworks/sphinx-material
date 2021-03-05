@@ -51,10 +51,11 @@ export function renderVersionSelector(versions: Version[]): HTMLElement {
   const config = configuration()
 
   /* Determine active version */
-  const [, current] = config.base.match(/([^/]+)\/?$/)!
+  const getCanonical = (version: string) => new URL(version, config.base).toString().replace(/\/*$/, '');
+  const current = config.base.toString().replace(/\/*$/, '');
   const active =
     versions.find(({ version, aliases }) => (
-      version === current || aliases.includes(current)
+      getCanonical(version) === current || aliases.find(alias => getCanonical(alias) === current)
     )) || versions[0]
 
   /* Render version selector */
