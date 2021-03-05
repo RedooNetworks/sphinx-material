@@ -481,8 +481,8 @@ kbd {
   }
 
   // Data table
-  table:not([class]) {
-    display: inline-block;
+  table.data:not(.plain) {
+    display: table;
     max-width: 100%;
     overflow: auto;
     font-size: px2rem(12.8px);
