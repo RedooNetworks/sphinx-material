@@ -13,6 +13,7 @@ import slugify
 import sphinx.addnodes
 import sphinx.builders
 import sphinx.environment.adapters.toctree
+from bs4 import BeautifulSoup
 from sphinx.util import console
 import sphinx.util.docutils
 import sphinx.writers.html5
